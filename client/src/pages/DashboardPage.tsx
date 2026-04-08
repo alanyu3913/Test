@@ -11,6 +11,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isHostSessionOpen, setIsHostSessionOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [location, setLocation] = useState("");
   const [sessionDate, setSessionDate] = useState("");
@@ -65,6 +66,21 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
       isMounted = false;
     };
   }, [user.id]);
+
+  useEffect(() => {
+    if (!isHostSessionOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsHostSessionOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isHostSessionOpen]);
 
   const formatSessionDateTime = (date: string, time: string) => {
     const dateTime = new Date(`${date}T${time}`);
@@ -121,6 +137,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
       setSessionDate("");
       setSessionTime("");
       setFormMessage("Session created successfully.");
+      setIsHostSessionOpen(false);
       await loadDashboard(false);
     } catch (err: any) {
       setFormError(err.message || "Could not create session.");
@@ -172,6 +189,11 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    setFormMessage("");
+                    setFormError("");
+                    setIsHostSessionOpen(true);
+                  }}
                   className="rounded-full border border-[#8a826b] bg-white/70 px-5 py-3 text-sm font-semibold text-[#2e2a22] transition hover:bg-white"
                 >
                   Host a Session
@@ -244,100 +266,22 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                 <h3 className="mt-2 font-serif text-2xl font-semibold text-[#201c15]">
                   Create a study session
                 </h3>
+                <p className="mt-2 text-sm leading-6 text-[#5f584a]">
+                  Start a new study group from the dashboard header. The host form
+                  will pop up so you can create the session without leaving the page.
+                </p>
               </div>
-
-              <form className="mt-5 space-y-4" onSubmit={handleCreateSession}>
-                <div>
-                  <label
-                    htmlFor="session-subject"
-                    className="block text-sm font-medium text-[#3d372d]"
-                  >
-                    Subject
-                  </label>
-                  <input
-                    id="session-subject"
-                    type="text"
-                    required
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
-                    placeholder="Calculus I"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="session-location"
-                    className="block text-sm font-medium text-[#3d372d]"
-                  >
-                    Location
-                  </label>
-                  <input
-                    id="session-location"
-                    type="text"
-                    required
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
-                    placeholder="Library Room 204"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="session-date"
-                    className="block text-sm font-medium text-[#3d372d]"
-                  >
-                    Date
-                  </label>
-                  <input
-                    id="session-date"
-                    type="date"
-                    required
-                    min={new Date().toISOString().split("T")[0]}
-                    value={sessionDate}
-                    onChange={(e) => setSessionDate(e.target.value)}
-                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="session-time"
-                    className="block text-sm font-medium text-[#3d372d]"
-                  >
-                    Time
-                  </label>
-                  <input
-                    id="session-time"
-                    type="time"
-                    required
-                    value={sessionTime}
-                    onChange={(e) => setSessionTime(e.target.value)}
-                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
-                  />
-                </div>
-
-                {formMessage ? (
-                  <div className="rounded-xl border border-[#d7e7d5] bg-[#eff8ee] px-3 py-2 text-sm text-[#315436]">
-                    {formMessage}
-                  </div>
-                ) : null}
-
-                {formError ? (
-                  <div className="rounded-xl border border-[#ebd2cc] bg-[#fff5f2] px-3 py-2 text-sm text-[#8a3d2f]">
-                    {formError}
-                  </div>
-                ) : null}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full rounded-full bg-[#5A5A40] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4a4a34] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmitting ? "Creating session..." : "Host this session"}
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormMessage("");
+                  setFormError("");
+                  setIsHostSessionOpen(true);
+                }}
+                className="mt-5 w-full rounded-full bg-[#5A5A40] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4a4a34]"
+              >
+                Open host form
+              </button>
             </div>
           </div>
 
@@ -407,6 +351,143 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
           </div>
         </section>
       </div>
+
+      {isHostSessionOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f1a12]/55 px-4 py-8 backdrop-blur-sm"
+          onClick={() => setIsHostSessionOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-[2rem] border border-[#e6dfd0] bg-[#fffdf8] p-6 shadow-[0_24px_80px_rgba(31,26,18,0.28)] sm:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#7d765f]">
+                  Host
+                </p>
+                <h2 className="mt-2 font-serif text-3xl font-semibold text-[#201c15]">
+                  Create a study session
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#5f584a]">
+                  Fill out the details below and your session will appear in the dashboard.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHostSessionOpen(false)}
+                className="rounded-full border border-[#ddd4c3] px-3 py-1 text-sm font-semibold text-[#3c372d] transition hover:bg-[#f7f2e8]"
+              >
+                Close
+              </button>
+            </div>
+
+            <form className="mt-6 space-y-4" onSubmit={handleCreateSession}>
+              <div>
+                <label
+                  htmlFor="session-subject"
+                  className="block text-sm font-medium text-[#3d372d]"
+                >
+                  Subject
+                </label>
+                <input
+                  id="session-subject"
+                  type="text"
+                  required
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
+                  placeholder="Calculus I"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="session-location"
+                  className="block text-sm font-medium text-[#3d372d]"
+                >
+                  Location
+                </label>
+                <input
+                  id="session-location"
+                  type="text"
+                  required
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
+                  placeholder="Library Room 204"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="session-date"
+                    className="block text-sm font-medium text-[#3d372d]"
+                  >
+                    Date
+                  </label>
+                  <input
+                    id="session-date"
+                    type="date"
+                    required
+                    min={new Date().toISOString().split("T")[0]}
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="session-time"
+                    className="block text-sm font-medium text-[#3d372d]"
+                  >
+                    Time
+                  </label>
+                  <input
+                    id="session-time"
+                    type="time"
+                    required
+                    value={sessionTime}
+                    onChange={(e) => setSessionTime(e.target.value)}
+                    className="mt-1 block w-full rounded-xl border border-[#ddd4c3] bg-white px-3 py-2 text-sm text-[#201c15] focus:border-[#5A5A40] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {formMessage ? (
+                <div className="rounded-xl border border-[#d7e7d5] bg-[#eff8ee] px-3 py-2 text-sm text-[#315436]">
+                  {formMessage}
+                </div>
+              ) : null}
+
+              {formError ? (
+                <div className="rounded-xl border border-[#ebd2cc] bg-[#fff5f2] px-3 py-2 text-sm text-[#8a3d2f]">
+                  {formError}
+                </div>
+              ) : null}
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsHostSessionOpen(false)}
+                  className="rounded-full border border-[#d6cfbf] px-4 py-3 text-sm font-semibold text-[#3c372d] transition hover:bg-[#faf6ee]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="rounded-full bg-[#5A5A40] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4a4a34] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubmitting ? "Creating session..." : "Host this session"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
