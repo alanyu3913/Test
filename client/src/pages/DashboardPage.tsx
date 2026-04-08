@@ -261,27 +261,20 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
             <div className="mt-6 rounded-[1.5rem] border border-[#efe8da] bg-[#fcfaf4] p-5">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#7d765f]">
-                  Host
+                  Focus
                 </p>
                 <h3 className="mt-2 font-serif text-2xl font-semibold text-[#201c15]">
-                  Create a study session
+                  Keep your momentum
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[#5f584a]">
-                  Start a new study group from the dashboard header. The host form
-                  will pop up so you can create the session without leaving the page.
+                  Use the dashboard buttons to jump into your next study block, host
+                  a new session, and keep this week moving forward.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormMessage("");
-                  setFormError("");
-                  setIsHostSessionOpen(true);
-                }}
-                className="mt-5 w-full rounded-full bg-[#5A5A40] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#4a4a34]"
-              >
-                Open host form
-              </button>
+              <div className="mt-5 rounded-2xl border border-[#e8dfcf] bg-white px-4 py-4 text-sm leading-6 text-[#5f584a]">
+                Sessions you create from the popup will appear in the "Your next sessions"
+                section automatically after they are saved.
+              </div>
             </div>
           </div>
 
