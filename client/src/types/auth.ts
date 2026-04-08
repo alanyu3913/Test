@@ -12,6 +12,8 @@ export interface SessionSummary {
   time: string;
   hostName: string;
   userId: string;
+  joinedUserIds?: string[];
+  isJoined?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,5 +34,10 @@ export interface CreateSessionPayload {
   location: string;
   time: string;
   hostName: string;
+  userId: string;
+}
+
+export interface JoinSessionPayload {
+  sessionId: string;
   userId: string;
 }
