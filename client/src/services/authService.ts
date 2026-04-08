@@ -5,7 +5,17 @@ import type {
   SessionSummary,
 } from "../types/auth";
 
-const API_BASE_URL = "https://largeproj.msilvacop4331.site/api";
+const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
+
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, "");
+
+const AUTH_API_BASE_URL = normalizeBaseUrl(
+  env.VITE_AUTH_API_BASE_URL || "https://largeproj.msilvacop4331.site/api",
+);
+
+const SESSION_API_BASE_URL = normalizeBaseUrl(
+  env.VITE_SESSION_API_BASE_URL || `${window.location.origin}/api`,
+);
 
 interface LoginResponse {
   token: string;
@@ -31,7 +41,7 @@ const parseApiResponse = async <T>(
 };
 
 export const loginUser = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -54,7 +64,7 @@ export const loginUser = async (email: string, password: string): Promise<LoginR
 };
 
 export const verifyEmail = async (token: string): Promise<{ message: string }> => {
-  const response = await fetch(`${API_BASE_URL}/auth/verify/${token}`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/verify/${token}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
@@ -77,7 +87,7 @@ export const registerUser = async (
   email: string,
   password: string,
 ): Promise<{ message: string }> => {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ firstName, lastName, email, password }),
@@ -96,7 +106,7 @@ export const registerUser = async (
 };
 
 export const getDashboardData = async (userId: string): Promise<DashboardData> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`, {
+  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/user/${userId}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
@@ -116,7 +126,7 @@ export const getDashboardData = async (userId: string): Promise<DashboardData> =
 export const createSession = async (
   payload: CreateSessionPayload,
 ): Promise<{ message: string; session: SessionSummary }> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/create`, {
+  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
