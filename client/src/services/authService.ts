@@ -2,120 +2,81 @@ import type {
   AuthUser,
   CreateSessionPayload,
   DashboardData,
-  JoinSessionPayload,
   SessionSummary,
 } from "../types/auth";
 
-const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
+const API_BASE_URL = "https://largeproj.msilvacop4331.site/api";
 
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, "");
-
-const AUTH_API_BASE_URL = normalizeBaseUrl(
-  env.VITE_AUTH_API_BASE_URL || "https://largeproj.msilvacop4331.site/api",
-);
-
-const SESSION_API_BASE_URL = normalizeBaseUrl(
-  env.VITE_SESSION_API_BASE_URL || `${window.location.origin}/api`,
-);
-
+// Define what the server's response looks like for TypeScript
 interface LoginResponse {
   token: string;
   user: AuthUser;
 }
 
-const parseApiResponse = async <T>(
-  response: Response,
-  fallbackMessage: string,
-): Promise<T> => {
-  const contentType = response.headers.get("content-type") ?? "";
-  const body = await response.text();
-
-  if (!contentType.includes("application/json")) {
-    throw new Error(fallbackMessage);
-  }
-
-  try {
-    return JSON.parse(body) as T;
-  } catch {
-    throw new Error(fallbackMessage);
-  }
-};
-
 export const loginUser = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await fetch(`${AUTH_API_BASE_URL}/auth/login`, {
+  const API_URL = `${API_BASE_URL}/auth/login`;
+
+  const response = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await parseApiResponse<{ token: string; user: AuthUser; message?: string }>(
-    response,
-    "The server returned an unexpected response while signing in.",
-  );
-
   if (!response.ok) {
-    if (response.status === 403 && data.message?.includes("verify")) {
-      throw new Error("VERIFICATION_REQUIRED");
+    const errorData = await response.json();
+
+    // Check if the server sent a specific message about verification
+    if (response.status === 403 && errorData.message.includes("verify")) {
+        throw new Error("VERIFICATION_REQUIRED");
     }
 
-    throw new Error(data.message || "Login failed");
+    throw new Error(errorData.message || "Login failed");
   }
 
-  return data;
+  return response.json();
 };
 
 export const verifyEmail = async (token: string): Promise<{ message: string }> => {
-  const response = await fetch(`${AUTH_API_BASE_URL}/auth/verify/${token}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
+    const API_URL = `${API_BASE_URL}/auth/verify/${token}`;
 
-  const data = await parseApiResponse<{ message?: string }>(
-    response,
-    "The server returned an unexpected response while verifying your email.",
-  );
+    const response = await fetch(API_URL, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+    });
 
-  if (!response.ok) {
-    throw new Error(data.message || "Verification failed");
-  }
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Verification failed");
+    }
 
-  return data as { message: string };
+    return response.json();
 };
 
-export const registerUser = async (
-  firstName: string,
-  lastName: string,
-  email: string,
-  password: string,
-): Promise<{ message: string }> => {
-  const response = await fetch(`${AUTH_API_BASE_URL}/auth/register`, {
+export const registerUser = async (firstName: string, lastName: string, email: string, password: string): Promise<{ message: string }> => {
+  const API_URL = `${API_BASE_URL}/auth/register`;
+
+  const response = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ firstName, lastName, email, password }),
   });
 
-  const data = await parseApiResponse<{ message?: string }>(
-    response,
-    "The server returned an unexpected response while creating your account.",
-  );
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data.message || "Registration failed");
   }
 
-  return data as { message: string };
+  return data;
 };
 
 export const getDashboardData = async (userId: string): Promise<DashboardData> => {
-  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/user/${userId}`, {
+  const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
 
-  const data = await parseApiResponse<DashboardData & { message?: string }>(
-    response,
-    "Dashboard data is temporarily unavailable. Please try again in a moment.",
-  );
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data.message || "Could not load dashboard");
@@ -127,58 +88,16 @@ export const getDashboardData = async (userId: string): Promise<DashboardData> =
 export const createSession = async (
   payload: CreateSessionPayload,
 ): Promise<{ message: string; session: SessionSummary }> => {
-  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/create`, {
+  const response = await fetch(`${API_BASE_URL}/sessions/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const data = await parseApiResponse<{ message: string; session: SessionSummary }>(
-    response,
-    "The server returned an unexpected response while creating the session.",
-  );
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data.message || "Could not create session");
-  }
-
-  return data;
-};
-
-export const getAvailableSessions = async (userId: string): Promise<SessionSummary[]> => {
-  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/available/${userId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  const data = await parseApiResponse<{ sessions: SessionSummary[]; message?: string }>(
-    response,
-    "Available sessions are temporarily unavailable. Please try again in a moment.",
-  );
-
-  if (!response.ok) {
-    throw new Error(data.message || "Could not load available sessions");
-  }
-
-  return data.sessions;
-};
-
-export const joinSession = async (
-  payload: JoinSessionPayload,
-): Promise<{ message: string; session: SessionSummary }> => {
-  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await parseApiResponse<{ message: string; session: SessionSummary }>(
-    response,
-    "The server returned an unexpected response while joining the session.",
-  );
-
-  if (!response.ok) {
-    throw new Error(data.message || "Could not join session");
   }
 
   return data;
