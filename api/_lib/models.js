@@ -37,6 +37,12 @@ const sessionSchema =
         ref: "users",
         required: true,
       },
+      joinedUserIds: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "users",
+        },
+      ],
     },
     {
       timestamps: true,

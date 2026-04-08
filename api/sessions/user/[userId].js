@@ -9,17 +9,29 @@ export default {
       const url = new URL(request.url);
       const userId = decodeURIComponent(url.pathname.split("/").pop() || "");
 
-      const sessions = await Session.find({ userId })
+      const sessions = await Session.find({
+        $or: [{ userId }, { joinedUserIds: userId }],
+      })
         .sort({ createdAt: -1 })
         .lean();
 
+      const sessionsHosted = sessions.filter(
+        (session) => String(session.userId) === String(userId),
+      );
+      const sessionsJoined = sessions.filter(
+        (session) => String(session.userId) !== String(userId),
+      );
+
       return Response.json({
         stats: {
-          sessionsHosted: sessions.length,
-          sessionsJoined: 0,
+          sessionsHosted: sessionsHosted.length,
+          sessionsJoined: sessionsJoined.length,
           studyStreak: 0,
         },
-        sessions,
+        sessions: sessions.map((session) => ({
+          ...session,
+          isJoined: String(session.userId) !== String(userId),
+        })),
       });
     } catch (error) {
       console.error("Dashboard sessions error:", error);

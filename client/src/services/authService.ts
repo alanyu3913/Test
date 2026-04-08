@@ -2,6 +2,7 @@ import type {
   AuthUser,
   CreateSessionPayload,
   DashboardData,
+  JoinSessionPayload,
   SessionSummary,
 } from "../types/auth";
 
@@ -139,6 +140,45 @@ export const createSession = async (
 
   if (!response.ok) {
     throw new Error(data.message || "Could not create session");
+  }
+
+  return data;
+};
+
+export const getAvailableSessions = async (userId: string): Promise<SessionSummary[]> => {
+  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/available/${userId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  const data = await parseApiResponse<{ sessions: SessionSummary[]; message?: string }>(
+    response,
+    "Available sessions are temporarily unavailable. Please try again in a moment.",
+  );
+
+  if (!response.ok) {
+    throw new Error(data.message || "Could not load available sessions");
+  }
+
+  return data.sessions;
+};
+
+export const joinSession = async (
+  payload: JoinSessionPayload,
+): Promise<{ message: string; session: SessionSummary }> => {
+  const response = await fetch(`${SESSION_API_BASE_URL}/sessions/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseApiResponse<{ message: string; session: SessionSummary }>(
+    response,
+    "The server returned an unexpected response while joining the session.",
+  );
+
+  if (!response.ok) {
+    throw new Error(data.message || "Could not join session");
   }
 
   return data;
