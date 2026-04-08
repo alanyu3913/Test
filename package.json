@@ -1,8 +1,0 @@
-{
-  "name": "test-vercel-api",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "mongoose": "^9.3.3"
-  }
-}
