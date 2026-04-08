@@ -5,100 +5,165 @@ import type {
   SessionSummary,
 } from "../types/auth";
 
-const API_BASE_URL = "https://largeproj.msilvacop4331.site/api";
+const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
 
-// Define what the server's response looks like for TypeScript
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, "");
+
+const AUTH_API_BASE_URL = normalizeBaseUrl(
+  env.VITE_AUTH_API_BASE_URL || "https://largeproj.msilvacop4331.site/api",
+);
+
+const SESSION_API_BASE_URL = normalizeBaseUrl(
+  env.VITE_SESSION_API_BASE_URL || `${window.location.origin}/api`,
+);
+
+const SESSION_API_BASE_URLS = Array.from(
+  new Set([SESSION_API_BASE_URL, AUTH_API_BASE_URL]),
+);
+
 interface LoginResponse {
   token: string;
   user: AuthUser;
 }
 
-export const loginUser = async (email: string, password: string): Promise<LoginResponse> => {
-  const API_URL = `${API_BASE_URL}/auth/login`;
+const parseApiResponse = async <T>(
+  response: Response,
+  fallbackMessage: string,
+): Promise<T> => {
+  const contentType = response.headers.get("content-type") ?? "";
+  const body = await response.text();
 
-  const response = await fetch(API_URL, {
+  if (!contentType.includes("application/json")) {
+    throw new Error(fallbackMessage);
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error(fallbackMessage);
+  }
+};
+
+const fetchSessionJsonWithFallback = async <T>(
+  path: string,
+  init: RequestInit,
+  fallbackMessage: string,
+  requestFailedMessage: string,
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (const baseUrl of SESSION_API_BASE_URLS) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, init);
+      const data = await parseApiResponse<T & { message?: string }>(
+        response,
+        fallbackMessage,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          (data as { message?: string }).message || requestFailedMessage,
+        );
+      }
+
+      return data;
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error : new Error(requestFailedMessage);
+    }
+  }
+
+  throw lastError || new Error(requestFailedMessage);
+};
+
+export const loginUser = async (email: string, password: string): Promise<LoginResponse> => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
+  const data = await parseApiResponse<{ token: string; user: AuthUser; message?: string }>(
+    response,
+    "The server returned an unexpected response while signing in.",
+  );
 
-    // Check if the server sent a specific message about verification
-    if (response.status === 403 && errorData.message.includes("verify")) {
-        throw new Error("VERIFICATION_REQUIRED");
+  if (!response.ok) {
+    if (response.status === 403 && data.message?.includes("verify")) {
+      throw new Error("VERIFICATION_REQUIRED");
     }
 
-    throw new Error(errorData.message || "Login failed");
+    throw new Error(data.message || "Login failed");
   }
 
-  return response.json();
+  return data;
 };
 
 export const verifyEmail = async (token: string): Promise<{ message: string }> => {
-    const API_URL = `${API_BASE_URL}/auth/verify/${token}`;
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/verify/${token}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
 
-    const response = await fetch(API_URL, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-    });
+  const data = await parseApiResponse<{ message?: string }>(
+    response,
+    "The server returned an unexpected response while verifying your email.",
+  );
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Verification failed");
-    }
+  if (!response.ok) {
+    throw new Error(data.message || "Verification failed");
+  }
 
-    return response.json();
+  return data as { message: string };
 };
 
-export const registerUser = async (firstName: string, lastName: string, email: string, password: string): Promise<{ message: string }> => {
-  const API_URL = `${API_BASE_URL}/auth/register`;
-
-  const response = await fetch(API_URL, {
+export const registerUser = async (
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string,
+): Promise<{ message: string }> => {
+  const response = await fetch(`${AUTH_API_BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ firstName, lastName, email, password }),
   });
 
-  const data = await response.json();
+  const data = await parseApiResponse<{ message?: string }>(
+    response,
+    "The server returned an unexpected response while creating your account.",
+  );
 
   if (!response.ok) {
     throw new Error(data.message || "Registration failed");
   }
 
-  return data;
+  return data as { message: string };
 };
 
 export const getDashboardData = async (userId: string): Promise<DashboardData> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/user/${userId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Could not load dashboard");
-  }
-
-  return data;
+  return fetchSessionJsonWithFallback<DashboardData>(
+    `/sessions/user/${userId}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    },
+    "Dashboard data is temporarily unavailable. Please try again in a moment.",
+    "Could not load dashboard",
+  );
 };
 
 export const createSession = async (
   payload: CreateSessionPayload,
 ): Promise<{ message: string; session: SessionSummary }> => {
-  const response = await fetch(`${API_BASE_URL}/sessions/create`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Could not create session");
-  }
-
-  return data;
+  return fetchSessionJsonWithFallback<{ message: string; session: SessionSummary }>(
+    "/sessions/create",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    "The server returned an unexpected response while creating the session.",
+    "Could not create session",
+  );
 };
